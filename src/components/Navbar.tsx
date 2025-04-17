@@ -1,8 +1,11 @@
 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const Navbar = () => {
+  const { isAuthenticated, logout } = useAuth();
+
   return (
     <nav className="w-full py-4 px-6 md:px-12 flex items-center justify-between bg-white border-b">
       <div className="flex items-center">
@@ -15,22 +18,33 @@ const Navbar = () => {
         <Link to="/docs" className="text-sm font-medium text-gray-600 hover:text-primary">
           Docs
         </Link>
-        <Link to="/playground" className="text-sm font-medium text-gray-600 hover:text-primary">
-          Playground
-        </Link>
+        {isAuthenticated && (
+          <Link to="/playground" className="text-sm font-medium text-gray-600 hover:text-primary">
+            Playground
+          </Link>
+        )}
         <Link to="/pricing" className="text-sm font-medium text-gray-600 hover:text-primary">
           Pricing
         </Link>
-        <Link to="/login">
-          <Button variant="ghost" className="text-sm font-medium">
-            Login
+
+        {isAuthenticated ? (
+          <Button variant="ghost" className="text-sm font-medium" onClick={logout}>
+            Logout
           </Button>
-        </Link>
-        <Link to="/signup">
-          <Button className="text-sm font-medium">
-            Sign Up
-          </Button>
-        </Link>
+        ) : (
+          <>
+            <Link to="/login">
+              <Button variant="ghost" className="text-sm font-medium">
+                Login
+              </Button>
+            </Link>
+            <Link to="/signup">
+              <Button className="text-sm font-medium">
+                Sign Up
+              </Button>
+            </Link>
+          </>
+        )}
       </div>
       
       <div className="md:hidden">
