@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CodeExampleTabs from "@/components/CodeExampleTabs";
 import { useAuth } from "@/context/AuthContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Clock, Database, Globe, Server } from "lucide-react";
@@ -42,6 +43,7 @@ const Dashboard = () => {
       <main className="flex-grow p-6 lg:p-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+          <CodeExampleTabs />
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {stats.map((stat, index) => (

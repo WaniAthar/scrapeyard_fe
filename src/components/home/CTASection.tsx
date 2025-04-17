@@ -22,17 +22,7 @@ const CTASection = () => {
               </Button>
             </Link>
           </div>
-          <div className="inline-flex rounded-md shadow">
-            <Link to="/contact">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="border-white text-white hover:bg-primary-foreground hover:text-primary"
-              >
-                Contact sales
-              </Button>
-            </Link>
-          </div>
+         
         </div>
       </div>
     </div>
