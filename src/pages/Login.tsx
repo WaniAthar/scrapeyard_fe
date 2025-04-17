@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { Info } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -34,6 +35,11 @@ const Login = () => {
     navigate(from);
   };
 
+  const useDemo = () => {
+    setEmail("demo@example.com");
+    setPassword("password123");
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -48,6 +54,24 @@ const Login = () => {
           <form onSubmit={handleSubmit}>
             <CardContent>
               <div className="space-y-4">
+                <div className="mb-4 p-3 bg-primary/10 rounded-md flex items-start gap-3">
+                  <Info size={18} className="text-primary mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Demo Credentials</p>
+                    <p className="text-xs text-gray-600">Email: demo@example.com</p>
+                    <p className="text-xs text-gray-600">Password: password123</p>
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      size="sm" 
+                      className="h-6 p-0 text-xs text-primary" 
+                      onClick={useDemo}
+                    >
+                      Use demo credentials
+                    </Button>
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <label htmlFor="email" className="text-sm font-medium">Email</label>
                   <Input 
