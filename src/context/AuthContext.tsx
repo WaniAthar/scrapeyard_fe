@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 type AuthContextType = {
   isAuthenticated: boolean;
   login: (email: string, password: string) => void;
+  signup: (email: string, password: string, company?: string) => void;
   logout: () => void;
 };
 
@@ -26,6 +27,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthenticated(true);
     localStorage.setItem('isAuthenticated', 'true');
   };
+  
+  const signup = (email: string, password: string, company?: string) => {
+    // In a real app, you would create an account in the backend
+    // For now, just simulate a successful registration and login
+    setIsAuthenticated(true);
+    localStorage.setItem('isAuthenticated', 'true');
+  };
 
   const logout = () => {
     setIsAuthenticated(false);
@@ -33,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
