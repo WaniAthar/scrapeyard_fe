@@ -1,8 +1,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import CodeExampleTabs from "@/components/CodeExampleTabs";
 import ProcessAnimation from "@/components/home/ProcessAnimation";
+import CodeExampleTabs from "../CodeExampleTabs";
 
 const HeroSection = () => {
   return (

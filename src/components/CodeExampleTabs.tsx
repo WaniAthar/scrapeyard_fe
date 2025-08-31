@@ -4,7 +4,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Highlight } from "prism-react-renderer";
 import dracula from '../themes/dracula';
 import { Copy, Play, Pause } from "lucide-react";
-import ResponseWidget from "./ResponseWidget";
 import SimpleResponseWidget from "./SimpleResponseWidget";
 import { useRef } from "react";
 
@@ -212,8 +211,7 @@ const CodeExampleTabs = () => {
               </div>
             </TabsContent>            
           ))}
-        </Tabs>
-       
+        </Tabs>  
       </div>
     </div>
   );
@@ -261,4 +259,4 @@ const FadeResponseOverlay = ({ output }: { output: string }) => {
   );
 };
 
-export default FadeResponseOverlay;
+export default CodeExampleTabs;
