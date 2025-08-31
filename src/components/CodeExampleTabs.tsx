@@ -5,6 +5,8 @@ import { Highlight } from "prism-react-renderer";
 import dracula from '../themes/dracula';
 import { Copy, Play, Pause } from "lucide-react";
 import ResponseWidget from "./ResponseWidget";
+import SimpleResponseWidget from "./SimpleResponseWidget";
+import { useRef } from "react";
 
 const codeExamples = {
   python: {
@@ -208,9 +210,7 @@ const CodeExampleTabs = () => {
               <div className="flex flex-col gap-6 px-4 sm:px-8">
                 <CodeBlock code={code} language={label} />
               </div>
-            </TabsContent>
-
-            
+            </TabsContent>            
           ))}
         </Tabs>
        
@@ -220,24 +220,45 @@ const CodeExampleTabs = () => {
 };
 
 const FadeResponseOverlay = ({ output }: { output: string }) => {
-  const [showCard, setShowCard] = useState(false);
-  const [showContent, setShowContent] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const prevOutputRef = useRef<string | null>(null);
+
   useEffect(() => {
-    setShowCard(false);
-    setShowContent(false);
-    const cardTimeout = setTimeout(() => setShowCard(true), 10); 
-    const contentTimeout = setTimeout(() => setShowContent(true), 400);
-    return () => {
-      clearTimeout(cardTimeout);
-      clearTimeout(contentTimeout);
-    };
-  }, [output]);
+    if (output && output !== prevOutputRef.current) {
+      // Mount the component
+      setIsMounted(true);
+
+      // Allow a tick to pass so CSS transition can animate
+      requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    } else if (!output && isMounted) {
+      // Start fade out
+      setIsVisible(false);
+
+      // Remove component after transition duration (300ms)
+      const timeoutId = setTimeout(() => {
+        setIsMounted(false);
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
+    }
+
+    prevOutputRef.current = output || null;
+  }, [output, isMounted]);
+
+  if (!isMounted) return null;
+
   return (
-    <div className="w-[350px] absolute bottom-10 right-0 z-[50]">
-      <ResponseWidget response={output} />
+    <div
+      className={`w-[350px] absolute bottom-10 right-0 z-[50] transition-opacity duration-300 ease-in-out ${
+        isVisible ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <SimpleResponseWidget response={output} />
     </div>
   );
 };
 
-export default CodeExampleTabs;
-
+export default FadeResponseOverlay;
