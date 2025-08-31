@@ -72,26 +72,37 @@ const result = await scrapyard.scrape({
   curl: {
     label: "cURL",
     code: `curl -X POST https://api.firecrawl.dev/v1/extract \\
-  -H "Authorization: Bearer fc-YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{\n    "urls": [\n      "https://docs.firecrawl.dev/*",\n      "https://firecrawl.dev/",\n      "https://www.ycombinator.com/companies/"\n    ],\n    "prompt": "Extract the data provided in the schema.",\n    "schema": {\n      "company_mission": "string",\n      "supports_sso": "boolean",\n      "is_open_source": "boolean",\n      "is_in_yc": "boolean"\n    }\n  }'`,
+    -H "Authorization: Bearer fc-YOUR_API_KEY" \\
+    -H "Content-Type: application/json" \\
+    -d '{ 
+      "urls": [
+        "https://docs.firecrawl.dev/*",
+        "https://firecrawl.dev/",
+        "https://www.ycombinator.com/companies/"
+      ],
+      "prompt": "Extract the data provided in the schema.",
+      "schema": {
+        "company_mission": "string",
+        "supports_sso": "boolean",
+        "is_open_source": "boolean",
+        "is_in_yc": "boolean"
+      }
+    }'`,
     output: `[
-  {
-    "company_mission": "string",
-    "supports_sso": true,
-    "is_open_source": true,
-    "is_in_yc": true
-    "price": 19.99,
-    "in_stock": true
-  },
-  {
-    "name": "MegaWidget",
-    "price": 29.99,
-    "in_stock": false
+    {
+      "company_mission": "To make web scraping simple",
+      "supports_sso": true,
+      "is_open_source": false,
+      "is_in_yc": true
+    },
+    {
+      "company_mission": "Empowering developers with AI-first scraping tools",
+      "supports_sso": false,
+      "is_open_source": true,
+      "is_in_yc": false
+    }
+  ]`
   }
-]`
-  },
- 
 };
 
 
@@ -223,7 +234,7 @@ const FadeResponseOverlay = ({ output }: { output: string }) => {
   }, [output]);
   return (
     <div className="w-[350px] absolute bottom-10 right-0 z-[50]">
-      <ResponseWidget response={output} showContent={showContent} show={showCard} />
+      <ResponseWidget response={output} />
     </div>
   );
 };

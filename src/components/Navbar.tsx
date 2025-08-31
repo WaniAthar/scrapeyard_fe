@@ -1,12 +1,13 @@
 
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { LayoutDashboard, KeyRound, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 const Navbar = () => {
   const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -21,6 +22,12 @@ const Navbar = () => {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
+
+  const logoutAndClose = () => {
+    logout();
+    setMenuOpen(false);
+    navigate('/');
+  };
 
   // Close menu on route change (optional, if using react-router hooks)
 
@@ -62,7 +69,14 @@ const Navbar = () => {
         </Link>
 
         {isAuthenticated ? (
-          <Button variant="ghost" className="text-sm font-medium" onClick={logout}>
+          <Button 
+            variant="ghost" 
+            className="text-sm font-medium" 
+            onClick={() => {
+              logout();
+              navigate('/');
+            }}
+          >
             Logout
           </Button>
         ) : (
@@ -98,7 +112,7 @@ const Navbar = () => {
             )}
             <Link to="/pricing" className="px-6 py-2 text-gray-700 hover:bg-gray-50 text-base font-medium" onClick={() => setMenuOpen(false)}>Pricing</Link>
             {isAuthenticated ? (
-              <Button variant="ghost" className="mx-4 mt-2 text-base font-medium" onClick={() => { logout(); setMenuOpen(false); }}>Logout</Button>
+              <Button variant="ghost" className="mx-4 mt-2 text-base font-medium" onClick={logoutAndClose}>Logout</Button>
             ) : (
               <>
                 <Link to="/login" className="px-6 py-2 text-gray-700 hover:bg-gray-50 text-base font-medium" onClick={() => setMenuOpen(false)}>Login</Link>
