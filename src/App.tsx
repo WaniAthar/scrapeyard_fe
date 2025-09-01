@@ -22,8 +22,15 @@ import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
 import EmailVerification from "./pages/EmailVerification";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ApiPing from "@/components/ApiPing";
 
 const queryClient = new QueryClient();
+
+// API endpoints to monitor
+const API_ENDPOINTS = [
+  import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  import.meta.env.VITE_PLAYGROUND_URL || 'http://localhost:3000'
+].filter(Boolean);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -32,6 +39,12 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          {/* Add ApiPing component */}
+          <ApiPing 
+            endpoints={API_ENDPOINTS}
+            interval={5 * 60 * 1000} // 5 minutes
+            showStatusIndicator={process.env.NODE_ENV === 'development'}
+          />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/playground" element={<Playground />} />
