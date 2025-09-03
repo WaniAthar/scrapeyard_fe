@@ -1,423 +1,552 @@
 import React, { useState, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts';
+import { TrendingUp, TrendingDown, Minus, Activity, Clock, AlertCircle, CheckCircle, Key, Calendar, BarChart3, Download, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
-interface DashboardStats {
-  successRate: number;
-  failureRate: number;
+interface UsageDataPoint {
+  name: string;
+  usage: number;
+  successful?: number;
+  credits_used?: number;
 }
 
-interface ActivityLog {
-  id: string;
-  url?: string;
+interface RecentLog {
+  id: number;
+  status: 'pending' | 'success' | 'failed' | 'timeout';
   timestamp: string;
+  url?: string;
   error_message?: string;
-  status: 'success' | 'error';
+}
+
+interface UsageTrend {
+  trend: 'increasing' | 'decreasing' | 'stable';
+  change_percentage: number;
 }
 
 interface DashboardData {
+  user_name: string;
   email: string;
   credits: number;
+  total_calls: number;
+  successful_calls: number;
+  failed_calls: number;
+  timeout_calls: number;
+  success_rate: number;
   credits_used_this_month: number;
+  credits_used_period: number;
+  avg_daily_usage: number;
+  peak_usage: number;
+  usage_data: UsageDataPoint[];
+  recent_logs: RecentLog[];
   api_key_count: number;
-  stats?: DashboardStats;
-  activityLogs: ActivityLog[];
-  lastUpdated?: Date;
+  recently_used_api_keys: number;
+  usage_trend: UsageTrend;
+  period_days: number;
 }
 
 const Dashboard: React.FC = () => {
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState(30);
   const navigate = useNavigate();
-  
-  // Authentication check
+
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('accessToken');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-        
-        // Verify token is still valid (optional - remove if you don't have token verification)
-        try {
-          const response = await fetch('/api/verify-token', {
-            headers: { 
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (!response.ok) {
-            localStorage.removeItem('accessToken');
-            navigate('/login');
-            return;
-          }
-        } catch (verifyError) {
-          // If verification endpoint doesn't exist, just proceed with token presence check
-          console.log('Token verification skipped');
-        }
-        
-        setIsAuthenticated(true);
-        
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        navigate('/login');
-      } finally {
-        setIsAuthLoading(false);
+    fetchDashboardData(selectedPeriod);
+  }, [selectedPeriod]);
+
+  const fetchDashboardData = async (days: number) => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
       }
-    };
+      const API_URL = import.meta.env.VITE_API_URL;
+      const apiUrl = `${API_URL}/dashboard/data?days=${days}`;
+      console.log('Fetching dashboard data from:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
 
-    checkAuth();
-  }, [ navigate ]);
-
-  // Fetch dashboard data
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const fetchDashboardData = async () => {
+      const responseText = await response.text();
+      
       try {
-        const token = localStorage.getItem('accessToken');
-        const response = await fetch('/api/dashboard', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
+        const data = JSON.parse(responseText);
         if (response.ok) {
-          const data = await response.json();
+          console.log('Dashboard data received:', data);
           setDashboardData(data);
+        } else {
+          console.error('API Error:', data);
+          throw new Error(data.detail || 'Failed to fetch dashboard data');
         }
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setIsLoading(false);
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response. Response:', responseText);
+        throw new Error('Invalid response from server. Please try again later.');
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchDashboardData();
-  }, [isAuthenticated]);
+  const handlePeriodChange = (days: number) => {
+    setSelectedPeriod(days);
+  };
 
-  // Show loading while checking auth
-  if (isAuthLoading) {
+  const TrendIndicator = ({ trend, changePercentage = 0 }: { trend?: string; changePercentage?: number }) => {
+    if (!trend || changePercentage === 0) return null;
+    
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="flex items-center space-x-1">
+        {trend === 'increasing' && <TrendingUp className="h-4 w-4 text-green-500" />}
+        {trend === 'decreasing' && <TrendingDown className="h-4 w-4 text-red-500" />}
+        {trend === 'stable' && <Minus className="h-4 w-4 text-muted-foreground" />}
+        <span className={`text-sm font-medium ${
+          trend === 'increasing' ? 'text-green-500' : 
+          trend === 'decreasing' ? 'text-red-500' : 
+          'text-muted-foreground'
+        }`}>
+          {changePercentage > 0 ? '+' : ''}{changePercentage.toFixed(1)}%
+        </span>
       </div>
     );
-  }
+  };
 
-  // Don't render anything if not authenticated (will redirect)
-  if (!isAuthenticated) return null;
+  // Helper function to safely calculate values
+  const safeCalculate = (numerator: number, denominator: number, defaultValue: number = 0): number => {
+    if (!denominator || denominator === 0) return defaultValue;
+    return numerator / denominator;
+  };
 
-  const EmptyStateMain = () => (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          <div className="text-center max-w-md mx-auto">
-            {/* Icon */}
-            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-gray-100 mb-6">
-              <svg className="h-10 w-10 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+  // Helper function to safely format numbers
+  const safeFormat = (value: number | undefined | null, defaultValue: string = '0'): string => {
+    if (value === undefined || value === null || isNaN(value)) return defaultValue;
+    return value.toLocaleString();
+  };
+
+  // Helper function to safely format decimal numbers
+  const safeFormatDecimal = (value: number | undefined | null, decimals: number = 1, defaultValue: string = '0'): string => {
+    if (value === undefined || value === null || isNaN(value)) return defaultValue;
+    return value.toFixed(decimals);
+  };
+
+  // Add default values and calculations for missing fields
+  const dashboardDataWithDefaults = dashboardData ? {
+    ...dashboardData,
+    timeout_calls: dashboardData.timeout_calls || 0,
+    success_rate: dashboardData.total_calls > 0 ? 
+      Math.round((dashboardData.successful_calls / dashboardData.total_calls) * 100) : 0,
+    credits_used_period: dashboardData.credits_used_period || dashboardData.credits_used_this_month || 0,
+    avg_daily_usage: dashboardData.period_days > 0 ? 
+      safeCalculate(dashboardData.total_calls, dashboardData.period_days) : 0,
+    peak_usage: dashboardData.peak_usage || Math.max(...(dashboardData.usage_data?.map(d => d.usage) || [0])),
+    recently_used_api_keys: dashboardData.recently_used_api_keys || dashboardData.api_key_count || 0,
+    period_days: dashboardData.period_days || 30,
+    usage_trend: dashboardData.usage_trend || { trend: 'stable', change_percentage: 0 }
+  } : null;
+
+  const StatCard = ({ 
+    icon: Icon, 
+    title, 
+    value, 
+    subtitle, 
+    trend, 
+    showTrend = false 
+  }: {
+    icon: any;
+    title: string;
+    value: string;
+    subtitle?: string;
+    trend?: UsageTrend;
+    showTrend?: boolean;
+  }) => (
+    <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <Icon className="h-5 w-5" />
             </div>
-            
-            {/* Title */}
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              Welcome to ScrapeYard
-            </h2>
-            
-            {/* Description */}
-            <p className="text-gray-600 mb-8">
-              Start making API requests to see your usage statistics, activity logs, and analytics here.
-            </p>
-            
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button 
-                onClick={() => window.open('/docs', '_blank')}
-                className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors duration-200"
-              >
-                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Make Your First Request
-              </button>
-              <button 
-                onClick={() => window.open('/docs', '_blank')}
-                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
-              >
-                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                View Documentation
-              </button>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">{title}</p>
+              <p className="text-2xl font-bold">{value}</p>
+              {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
             </div>
           </div>
+          {showTrend && trend && (
+            <div className="text-right">
+              <TrendIndicator trend={trend.trend} changePercentage={trend.change_percentage} />
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 
-  const EmptyStateChart = ({ title }: { title: string }) => (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
-        <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-        </svg>
-      </div>
-      <p className="text-sm font-medium text-gray-700 mb-1">{title}</p>
-      <p className="text-xs text-gray-500">Data will appear once you start making requests</p>
-    </div>
-  );
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'success': return 'bg-green-50 text-green-700 border-green-200';
+      case 'failed': return 'bg-red-50 text-red-700 border-red-200';
+      case 'timeout': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+      case 'pending': return 'bg-blue-50 text-blue-700 border-blue-200';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
+  };
 
-  const EmptyStateActivity = () => (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
-        <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-      </div>
-      <p className="text-sm font-medium text-gray-700 mb-1">No activity yet</p>
-      <p className="text-xs text-gray-500">Your recent API requests will appear here</p>
-    </div>
-  );
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success': return <CheckCircle className="h-4 w-4" />;
+      case 'failed': return <AlertCircle className="h-4 w-4" />;
+      case 'timeout': return <Clock className="h-4 w-4" />;
+      default: return <Activity className="h-4 w-4" />;
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
-  // Destructure dashboardData if it exists
-  const {
-    email = '',
-    credits = 0,
-    credits_used_this_month = 0,
-    api_key_count = 0,
-    stats = { successRate: 0, failureRate: 0 },
-    activityLogs = [],
-    lastUpdated = new Date()
-  } = dashboardData || {};
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow">
+          <div className="container mx-auto px-4 py-8">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-12">
+              <div className="text-center max-w-md mx-auto">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-lg bg-muted mb-6">
+                  <BarChart3 className="h-8 w-8" />
+                </div>
+                <h2 className="text-2xl font-bold mb-3">Welcome to ScrapeYard</h2>
+                <p className="text-muted-foreground mb-8">
+                  Start making API requests to see your usage statistics, activity logs, and analytics here.
+                </p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                  <button onClick={() => navigate("/api-keys")} className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                    Make Your First Request
+                  </button>
+                  <button onClick={() => navigate("/docs")} className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    View Documentation
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow">
-        {!dashboardData ? (
-          <EmptyStateMain />
-        ) : (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Your ScrapeYard activity overview
-                {lastUpdated && (
-                  <span className="text-sm font-normal text-gray-500 ml-2">
-                    • Last updated {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
-              </h1>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {/* Credits Used */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Usage</p>
-                    <p className="text-2xl font-semibold text-gray-900">
-                      {credits_used_this_month.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-500">used this month</p>
-                  </div>
-                </div>
-              </div>
-
-          {/* Success Rate */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Success Rate</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats?.successRate.toFixed(1) || '0.0'}%
-                </p>
-                <p className="text-xs text-gray-500">of total requests</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Failure Rate */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Failure Rate</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats?.failureRate.toFixed(1) || '0.0'}%
-                </p>
-                <p className="text-xs text-gray-500">of total requests</p>
-              </div>
-            </div>
-          </div>
-
-          {/* API Keys */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">API Keys</p>
-                <p className="text-2xl font-semibold text-gray-900">{api_key_count}</p>
-                <p className="text-xs text-gray-500">
-                  {api_key_count === 1 ? 'Active key' : 'Active keys'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="container mx-auto px-4 py-8">
           
-          {/* Usage Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Usage Analytics</h3>
-            {credits_used_this_month > 0 ? (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                Chart will appear here once you start making API calls
-              </div>
-            ) : (
-              <EmptyStateChart title="No usage data yet" />
-            )}
-          </div>
-
-          {/* Activity Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Request Activity</h3>
-            {activityLogs && activityLogs.length > 0 ? (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                Activity chart will appear here
-              </div>
-            ) : (
-              <EmptyStateChart title="No activity data yet" />
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-          </div>
-          <div className="p-6">
-            {activityLogs && activityLogs.length > 0 ? (
-              <div className="space-y-4">
-                {activityLogs.map((log) => (
-                  <div key={log.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {log.url || 'API Request'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </p>
-                      {log.error_message && (
-                        <p className="text-sm text-red-600 mt-1">{log.error_message}</p>
-                      )}
-                    </div>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      log.status === 'success' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {log.status}
-                    </span>
-                  </div>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+              <p className="text-muted-foreground mt-1">
+                Analytics for the last {dashboardData.period_days} days
+              </p>
+            </div>
+            <div className="mt-4 sm:mt-0">
+              <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                {[7, 14, 30, 90].map((days) => (
+                  <button
+                    key={days}
+                    onClick={() => handlePeriodChange(days)}
+                    className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                      selectedPeriod === days
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'hover:bg-background/60'
+                    }`}
+                  >
+                    {days}d
+                  </button>
                 ))}
               </div>
-            ) : (
-              <EmptyStateActivity />
-            )}
+            </div>
           </div>
-        </div>
 
-        {/* Account Info */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Stats Grid */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            <StatCard
+              icon={Activity}
+              title="Total Requests"
+              value={safeFormat(dashboardDataWithDefaults?.total_calls)}
+              subtitle={`${safeFormatDecimal(dashboardDataWithDefaults?.avg_daily_usage)} avg/day`}
+              trend={dashboardDataWithDefaults?.usage_trend}
+              showTrend={true}
+            />
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <p className="text-sm text-gray-900">{email}</p>
+            <StatCard
+              icon={CheckCircle}
+              title="Success Rate"
+              value={`${dashboardDataWithDefaults?.success_rate || 0}%`}
+              subtitle={`${safeFormat(dashboardDataWithDefaults?.successful_calls)} successful`}
+            />
+            
+            <StatCard
+              icon={Calendar}
+              title="Credits Used"
+              value={safeFormat(dashboardDataWithDefaults?.credits_used_period)}
+              subtitle={`${safeFormat(dashboardDataWithDefaults?.credits)} remaining`}
+            />
+            
+            <StatCard
+              icon={Key}
+              title="API Keys"
+              value={safeFormat(dashboardDataWithDefaults?.api_key_count)}
+              subtitle={`${safeFormat(dashboardDataWithDefaults?.recently_used_api_keys)} recently active`}
+              showTrend={false}
+            />
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid gap-6 md:grid-cols-7 mb-8">
+            
+            {/* Usage Chart */}
+            <div className="md:col-span-5 rounded-lg border bg-card text-card-foreground shadow-sm">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold">Usage Analytics</h3>
+                    <p className="text-sm text-muted-foreground">
+                      API requests over the last {dashboardData.period_days} days
+                    </p>
+                  </div>
+                  <TrendIndicator 
+                    trend={dashboardData.usage_trend?.trend} 
+                    changePercentage={dashboardData.usage_trend?.change_percentage} 
+                  />
+                </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dashboardData.usage_data || []}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="name" 
+                        className="text-xs fill-muted-foreground"
+                        tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      />
+                      <YAxis className="text-xs fill-muted-foreground" />
+                      <Tooltip 
+                        labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                        formatter={(value, name) => [
+                          value, 
+                          name === 'usage' ? 'Total Requests' : 
+                          name === 'successful' ? 'Successful' : 
+                          name === 'credits_used' ? 'Credits Used' : name
+                        ]}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--card-foreground))'
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="usage" 
+                        stroke="hsl(var(--primary))" 
+                        fill="hsl(var(--primary))"
+                        fillOpacity={0.1}
+                        strokeWidth={2}
+                      />
+                      {dashboardData.usage_data?.some(d => d.successful !== undefined) && (
+                        <Area 
+                          type="monotone" 
+                          dataKey="successful" 
+                          stroke="hsl(var(--green-500))" 
+                          fill="hsl(var(--green-500))"
+                          fillOpacity={0.05}
+                          strokeWidth={1}
+                          strokeDasharray="5 5"
+                        />
+                      )}
+                      {dashboardData.usage_data?.some(d => d.credits_used !== undefined && d.credits_used > 0) && (
+                        <Area 
+                          type="monotone" 
+                          dataKey="credits_used" 
+                          stroke="hsl(var(--orange-500))" 
+                          fill="hsl(var(--orange-500))"
+                          fillOpacity={0.05}
+                          strokeWidth={1}
+                          strokeDasharray="3 3"
+                        />
+                      )}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Credits
-              </label>
-              <p className="text-sm text-gray-900">
-                {credits.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Used this month: {credits_used_this_month.toLocaleString()}
-              </p>
-            </div>
+            {/* Quick Stats */}
+            <div className="md:col-span-2 space-y-4">
+              
+              {/* Success Breakdown */}
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="p-6">
+                  <h4 className="font-semibold mb-4">Request Status</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-sm">Successful</span>
+                      </div>
+                      <span className="text-sm font-medium">{safeFormat(dashboardData.successful_calls)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        <span className="text-sm">Failed</span>
+                      </div>
+                      <span className="text-sm font-medium">{safeFormat(dashboardData.failed_calls)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                        <span className="text-sm">Timeout</span>
+                      </div>
+                      <span className="text-sm font-medium">{safeFormat(dashboardData.timeout_calls)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Success Rate
-              </label>
-              <p className="text-sm text-gray-900">
-                {stats?.successRate.toFixed(1) || '0.0'}%
-              </p>
+              {/* Peak Usage */}
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="p-6">
+                  <h4 className="font-semibold mb-2">Peak Usage</h4>
+                  <p className="text-2xl font-bold">{safeFormat(dashboardDataWithDefaults?.peak_usage)}</p>
+                  <p className="text-xs text-muted-foreground">highest single day</p>
+                </div>
+              </div>
+
+              {/* Credits Efficiency */}
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="p-6">
+                  <h4 className="font-semibold mb-2">Avg Cost</h4>
+                  <p className="text-2xl font-bold">
+                    {dashboardData.total_calls > 0 && dashboardDataWithDefaults?.credits_used_period
+                      ? safeFormatDecimal(safeCalculate(dashboardDataWithDefaults.credits_used_period, dashboardData.total_calls), 2)
+                      : '0.00'
+                    }
+                  </p>
+                  <p className="text-xs text-muted-foreground">credits per request</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm mb-8">
+            <div className="border-b bg-muted/50 px-6 py-4">
+              <h3 className="font-semibold">Recent Activity</h3>
+              <p className="text-sm text-muted-foreground">Latest API requests and their status</p>
+            </div>
+            <div className="p-6">
+              {dashboardData.recent_logs && dashboardData.recent_logs.length > 0 ? (
+                <div className="space-y-4">
+                  {dashboardData.recent_logs.map((log) => (
+                    <div key={log.id} className="flex items-center justify-between p-4 rounded-md border hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center space-x-4">
+                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-md border ${getStatusColor(log.status)}`}>
+                          {getStatusIcon(log.status)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">
+                            {log.url || 'API Request'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </p>
+                          {log.error_message && (
+                            <p className="text-sm text-destructive mt-1 truncate">
+                              {log.error_message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${getStatusColor(log.status)}`}>
+                        {log.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="font-semibold mb-1">No activity yet</h3>
+                  <p className="text-sm text-muted-foreground">Your recent API requests will appear here</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Account Information */}
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div className="border-b bg-muted/50 px-6 py-4">
+              <h3 className="font-semibold">Account Information</h3>
+              <p className="text-sm text-muted-foreground">Your account details and current usage</p>
+            </div>
+            <div className="p-6">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Account Holder</h4>
+                  <p className="font-medium">{dashboardData.user_name}</p>
+                  <p className="text-sm text-muted-foreground">{dashboardData.email}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Available Credits</h4>
+                  <p className="text-2xl font-bold">{safeFormat(dashboardData.credits)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {safeFormat(dashboardData.credits_used_this_month)} used this month
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Performance</h4>
+                  <p className="text-2xl font-bold">{dashboardDataWithDefaults?.success_rate}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {safeFormat(dashboardData.total_calls)} total requests
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">API Integration</h4>
+                  <p className="text-2xl font-bold">{safeFormat(dashboardData.api_key_count)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {safeFormat(dashboardData.recently_used_api_keys)} active recently
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-                 
-          </div>
-        )}
       </main>
       <Footer />
     </div>

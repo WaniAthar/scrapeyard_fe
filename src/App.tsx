@@ -22,7 +22,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
 import EmailVerification from "./pages/EmailVerification";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import ApiPing from "@/components/ApiPing";
 
 const queryClient = new QueryClient();
 
@@ -39,12 +38,6 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          {/* Add ApiPing component */}
-          <ApiPing 
-            endpoints={API_ENDPOINTS}
-            interval={5 * 60 * 1000} // 5 minutes
-            showStatusIndicator={process.env.NODE_ENV === 'development'}
-          />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/playground" element={<Playground />} />

@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
 // Create a utility function for making authenticated requests
-const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}, token?: string) => {
+export const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}, token?: string) => {
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
@@ -102,21 +102,10 @@ export const verifyEmail = async (token: string) => {
   return await response.json();
 };
 
-export const regenerateApiKey = async (token: string) => {
-  const response = await makeAuthenticatedRequest(`${API_URL}/api_keys/regenerate`, {
-    method: "POST",
-  }, token);
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Failed to regenerate API key");
-  }
-
-  return await response.json();
-};
+// Updated API functions for auth-api.ts
 
 export const getApiKeys = async (token: string) => {
-  const response = await makeAuthenticatedRequest(`${API_URL}/api_keys/get_key`, {
+  const response = await makeAuthenticatedRequest(`${API_URL}/api_keys/get_keys`, {
     method: "GET",
   }, token);
 
@@ -128,7 +117,7 @@ export const getApiKeys = async (token: string) => {
   return await response.json();
 };
 
-export const createApiKey = async (token: string, data: any) => {
+export const createApiKey = async (token: string, data: { name: string; description?: string }) => {
   const response = await makeAuthenticatedRequest(`${API_URL}/api_keys/create`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -142,8 +131,8 @@ export const createApiKey = async (token: string, data: any) => {
   return await response.json();
 };
 
-export const deleteApiKey = async (token: string) => {
-  const response = await makeAuthenticatedRequest(`${API_URL}/api_keys/delete_key`, {
+export const deleteApiKey = async (token: string, apiKeyId: number) => {
+  const response = await makeAuthenticatedRequest(`${API_URL}/api_keys/delete_key/${apiKeyId}`, {
     method: "DELETE",
   }, token);
 
@@ -152,7 +141,8 @@ export const deleteApiKey = async (token: string) => {
     throw new Error(errorData.detail || "Failed to delete API key");
   }
 
-  return await response.json();
+  // The backend returns 204 No Content, so we don't need to parse JSON
+  return;
 };
 
 export const scrape = async (token: string, data: any) => {
