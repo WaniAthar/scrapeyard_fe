@@ -72,15 +72,11 @@ const result = await scrapyard.scrape({
   },
   curl: {
     label: "cURL",
-    code: `curl -X POST https://api.firecrawl.dev/v1/extract \\
-    -H "Authorization: Bearer fc-YOUR_API_KEY" \\
+    code: `curl -X POST https://scrapeyard.dev/scrape \\
+    -H "Authorization: Bearer sy-YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{ 
-      "urls": [
-        "https://docs.firecrawl.dev/*",
-        "https://firecrawl.dev/",
-        "https://www.ycombinator.com/companies/"
-      ],
+      "url": "https://ycombinator.com/companies",
       "prompt": "Extract the data provided in the schema.",
       "schema": {
         "company_mission": "string",
